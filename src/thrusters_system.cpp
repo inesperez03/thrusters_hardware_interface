@@ -1,5 +1,8 @@
 #include "thrusters_hardware_interface/thrusters_system.hpp"
+
+#ifdef TARGET_RASPBERRY
 #include "bindings.h"
+#endif
 
 #include <algorithm>
 #include <cmath>
@@ -14,7 +17,7 @@ namespace thrusters_hardware_interface
 
 static uint16_t pulse_us_to_counts(double pulse_us, double freq_hz)
 {
-  const double period_us = 1e6 / freq_hz;  // 50 Hz -> 20000 us
+  const double period_us = 1e6 / freq_hz;
   const double counts = pulse_us * 4096.0 / period_us;
 
   const long rounded = std::lround(counts);
@@ -28,6 +31,7 @@ void ThrustersSystem::publish_zero_command()
     msg.data = {0.0, 0.0};
     thruster_stonefish_pub_->publish(msg);
   } else if (environment_ == "real" && navigator_initialized_ && pwm_enabled_) {
+#ifdef TARGET_RASPBERRY
     const double neutral_pulse_us = mapper_.forceToPwm(0.0);
     const uint16_t neutral_counts = pulse_us_to_counts(neutral_pulse_us, pwm_frequency_hz_);
 
@@ -39,6 +43,9 @@ void ThrustersSystem::publish_zero_command()
     } catch (...) {
       std::cerr << "Failed to send neutral PWM command: unknown error" << std::endl;
     }
+#else
+    std::cerr << "Real environment requested, but hardware backend is not available on this architecture" << std::endl;
+#endif
   }
 }
 
@@ -108,9 +115,6 @@ hardware_interface::CallbackReturn ThrustersSystem::on_configure(
   internal_node_.reset();
   thruster_stonefish_pub_.reset();
 
-  set_raspberry_pi_version(Raspberry::Pi4);
-  set_navigator_version(NavigatorVersion::Version1);
-
   navigator_initialized_ = false;
   pwm_enabled_ = false;
 
@@ -123,6 +127,10 @@ hardware_interface::CallbackReturn ThrustersSystem::on_configure(
 
     std::cout << "Stonefish publisher created successfully" << std::endl;
   } else if (environment_ == "real") {
+#ifdef TARGET_RASPBERRY
+    set_raspberry_pi_version(Raspberry::Pi4);
+    set_navigator_version(NavigatorVersion::Version1);
+
     try {
       init();
       navigator_initialized_ = true;
@@ -150,6 +158,11 @@ hardware_interface::CallbackReturn ThrustersSystem::on_configure(
       pwm_enabled_ = false;
       return hardware_interface::CallbackReturn::ERROR;
     }
+#else
+    std::cerr << "Environment is 'real' but this build does not include Navigator support on this architecture"
+          << std::endl;
+    return hardware_interface::CallbackReturn::ERROR;
+#endif
   } else {
     std::cerr << "Unknown environment: " << environment_ << std::endl;
     return hardware_interface::CallbackReturn::ERROR;
@@ -174,6 +187,7 @@ hardware_interface::CallbackReturn ThrustersSystem::on_cleanup(
 
   publish_zero_command();
 
+#ifdef TARGET_RASPBERRY
   if (environment_ == "real" && navigator_initialized_) {
     try {
       set_pwm_enable(false);
@@ -183,6 +197,7 @@ hardware_interface::CallbackReturn ThrustersSystem::on_cleanup(
       std::cerr << "Failed to disable PWM during cleanup: unknown error" << std::endl;
     }
   }
+#endif
 
   pwm_enabled_ = false;
   navigator_initialized_ = false;
@@ -211,6 +226,7 @@ hardware_interface::CallbackReturn ThrustersSystem::on_shutdown(
 
   publish_zero_command();
 
+#ifdef TARGET_RASPBERRY
   if (environment_ == "real" && navigator_initialized_) {
     try {
       set_pwm_enable(false);
@@ -220,6 +236,7 @@ hardware_interface::CallbackReturn ThrustersSystem::on_shutdown(
       std::cerr << "Failed to disable PWM during shutdown: unknown error" << std::endl;
     }
   }
+#endif
 
   pwm_enabled_ = false;
   navigator_initialized_ = false;
@@ -264,6 +281,7 @@ hardware_interface::CallbackReturn ThrustersSystem::on_deactivate(
 
   publish_zero_command();
 
+#ifdef TARGET_RASPBERRY
   if (environment_ == "real" && navigator_initialized_) {
     try {
       set_pwm_enable(false);
@@ -274,6 +292,7 @@ hardware_interface::CallbackReturn ThrustersSystem::on_deactivate(
       std::cerr << "Failed to disable PWM during deactivation: unknown error" << std::endl;
     }
   }
+#endif
 
   std::cout << "ThrustersSystem deactivated" << std::endl;
   return hardware_interface::CallbackReturn::SUCCESS;
@@ -291,6 +310,7 @@ hardware_interface::CallbackReturn ThrustersSystem::on_error(
 
   publish_zero_command();
 
+#ifdef TARGET_RASPBERRY
   if (environment_ == "real" && navigator_initialized_) {
     try {
       set_pwm_enable(false);
@@ -300,6 +320,7 @@ hardware_interface::CallbackReturn ThrustersSystem::on_error(
       std::cerr << "Failed to disable PWM during error handling: unknown error" << std::endl;
     }
   }
+#endif
 
   pwm_enabled_ = false;
   navigator_initialized_ = false;
@@ -363,14 +384,20 @@ hardware_interface::return_type ThrustersSystem::write(
   }
 
   const double left_stonefish = mapper_.forceToStonefish(left_force_cmd_);
-  const double right_stonefish = mapper_.forceToStonefish(right_force_cmd_);	
+  const double right_stonefish = mapper_.forceToStonefish(right_force_cmd_);
   const double left_pulse_us = mapper_.forceToPwm(left_force_cmd_);
   const double right_pulse_us = mapper_.forceToPwm(right_force_cmd_);
- 
-  const uint16_t left_counts = pulse_us_to_counts(left_pulse_us, pwm_frequency_hz_);
-  const uint16_t right_counts = pulse_us_to_counts(right_pulse_us, pwm_frequency_hz_);
+
+  #ifdef TARGET_RASPBERRY
+    const uint16_t left_counts = pulse_us_to_counts(left_pulse_us, pwm_frequency_hz_);
+    const uint16_t right_counts = pulse_us_to_counts(right_pulse_us, pwm_frequency_hz_);
+  #endif
 
   if (environment_ == "real") {
+#ifndef TARGET_RASPBERRY
+    std::cerr << "Real environment requested, but this build does not support Navigator hardware" << std::endl;
+    return hardware_interface::return_type::ERROR;
+#else
     if (!navigator_initialized_ || !pwm_enabled_) {
       std::cerr << "Navigator PWM not initialized" << std::endl;
       return hardware_interface::return_type::ERROR;
@@ -416,6 +443,7 @@ hardware_interface::return_type ThrustersSystem::write(
       last_left_output_ = static_cast<double>(left_counts);
       last_right_output_ = static_cast<double>(right_counts);
     }
+#endif
   } else if (environment_ == "sim") {
     if (!thruster_stonefish_pub_) {
       std::cerr << "Stonefish publisher not initialized" << std::endl;

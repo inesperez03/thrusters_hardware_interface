@@ -17,43 +17,60 @@ include(ExternalProject)
 set(ZIP_URL "https://github.com/bluerobotics/navigator-lib/releases/latest/download/cpp.zip")
 set(NAVIGATOR_DIR "${CMAKE_BINARY_DIR}/navigator_zip_contents")
 
-ExternalProject_Add(
-  navigator_lib
-  URL ${ZIP_URL}
-  DOWNLOAD_DIR "${CMAKE_BINARY_DIR}/navigator_download"
-  SOURCE_DIR ${NAVIGATOR_DIR}
-  CONFIGURE_COMMAND ""
-  BUILD_COMMAND ""
-  INSTALL_COMMAND ""
-  TEST_COMMAND ""
-)
-
 # Detect architecture
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "armv7")
   set(NAVIGATOR_ARCH "armv7-unknown-linux-gnueabihf")
+  set(TARGET_RASPBERRY TRUE)
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
   set(NAVIGATOR_ARCH "aarch64-unknown-linux-gnu")
+  set(TARGET_RASPBERRY TRUE)
 else()
-  message(FATAL_ERROR "Unsupported architecture: ${CMAKE_SYSTEM_PROCESSOR}")
+  message(WARNING "Building thrusters_hardware_interface in desktop mode on unsupported architecture: ${CMAKE_SYSTEM_PROCESSOR}")
+  set(TARGET_RASPBERRY FALSE)
 endif()
 
-set(NAVIGATOR_LIB "${NAVIGATOR_DIR}/${NAVIGATOR_ARCH}/libbluerobotics_navigator.so")
+# Only download and link navigator-lib on Raspberry-compatible targets
+if(TARGET_RASPBERRY)
+  ExternalProject_Add(
+    navigator_lib
+    URL ${ZIP_URL}
+    DOWNLOAD_DIR "${CMAKE_BINARY_DIR}/navigator_download"
+    SOURCE_DIR ${NAVIGATOR_DIR}
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+    TEST_COMMAND ""
+  )
+
+  set(NAVIGATOR_LIB "${NAVIGATOR_DIR}/${NAVIGATOR_ARCH}/libbluerobotics_navigator.so")
+endif()
 
 add_library(${PROJECT_NAME} SHARED
   src/thrusters_system.cpp
   src/thruster_mapper.cpp
 )
 
-add_dependencies(${PROJECT_NAME} navigator_lib)
+if(TARGET_RASPBERRY)
+  add_dependencies(${PROJECT_NAME} navigator_lib)
+endif()
 
 target_include_directories(${PROJECT_NAME} PRIVATE
   include
-  ${NAVIGATOR_DIR}
 )
 
-target_link_libraries(${PROJECT_NAME}
-  ${NAVIGATOR_LIB}
-)
+if(TARGET_RASPBERRY)
+  target_include_directories(${PROJECT_NAME} PRIVATE
+    ${NAVIGATOR_DIR}
+  )
+
+  target_link_libraries(${PROJECT_NAME}
+    ${NAVIGATOR_LIB}
+  )
+
+  target_compile_definitions(${PROJECT_NAME} PRIVATE TARGET_RASPBERRY)
+else()
+  target_compile_definitions(${PROJECT_NAME} PRIVATE TARGET_DESKTOP)
+endif()
 
 ament_target_dependencies(${PROJECT_NAME}
   hardware_interface
