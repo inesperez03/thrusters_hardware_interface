@@ -82,8 +82,8 @@ private:
   bool pwm_enabled_{false};
   double pwm_frequency_hz_{50.0};
 
-  int left_pwm_channel_index_{3};
-  int right_pwm_channel_index_{4};
+  int left_pwm_channel_index_{0};
+  int right_pwm_channel_index_{2};
 };
 
 }  // namespace thrusters_hardware_interface
