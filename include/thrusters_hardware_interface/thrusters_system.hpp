@@ -59,19 +59,14 @@ private:
 
   std::string environment_;
   std::string lookup_csv_path_;
+  std::string stonefish_topic_{"/catamaran/controller/thruster_setpoints_sim"};
 
   bool is_active_{false};
 
-  double left_force_cmd_{0.0};
-  double right_force_cmd_{0.0};
-
-  double left_force_state_{0.0};
-  double right_force_state_{0.0};
-
-  double last_left_force_cmd_{std::numeric_limits<double>::quiet_NaN()};
-  double last_right_force_cmd_{std::numeric_limits<double>::quiet_NaN()};
-  double last_left_output_{std::numeric_limits<double>::quiet_NaN()};
-  double last_right_output_{std::numeric_limits<double>::quiet_NaN()};
+  std::vector<double> force_commands_;
+  std::vector<double> force_states_;
+  std::vector<double> last_force_commands_;
+  std::vector<double> last_outputs_;
 
   ThrusterMapper mapper_;
 
@@ -82,8 +77,7 @@ private:
   bool pwm_enabled_{false};
   double pwm_frequency_hz_{50.0};
 
-  int left_pwm_channel_index_{0};
-  int right_pwm_channel_index_{2};
+  std::vector<int> pwm_channel_indices_;
 };
 
 }  // namespace thrusters_hardware_interface
