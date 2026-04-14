@@ -501,7 +501,14 @@ hardware_interface::return_type ThrustersSystem::write(
     stonefish_outputs[index] = mapper_.forceToStonefish(force_commands_[index]);
 
 #ifdef TARGET_RASPBERRY
-    double pulse_us = mapper_.forceToPwm(force_commands_[index]);
+    double commanded_force = force_commands_[index];
+    double applied_force = commanded_force;
+
+    if (environment_ == "real" && inverted_flags_[index]) {
+      applied_force = commanded_force;
+    }
+
+    double pulse_us = mapper_.forceToPwm(applied_force);
 
     if (environment_ == "real" && inverted_flags_[index]) {
       pulse_us = 3000.0 - pulse_us;
@@ -553,9 +560,17 @@ hardware_interface::return_type ThrustersSystem::write(
       std::ostringstream stream;
       stream << "[REAL]";
       for (std::size_t index = 0; index < info_.joints.size(); ++index) {
+        double commanded_force = force_commands_[index];
+        double applied_force = commanded_force;
+
+        if (inverted_flags_[index]) {
+          applied_force = commanded_force;
+        }
+
         stream
           << " " << info_.joints[index].name
-          << "=" << force_commands_[index]
+          << " cmd=" << commanded_force
+          << " applied=" << applied_force
           << "N->" << pwm_counts[index];
       }
       RCLCPP_INFO(kLogger, "%s", stream.str().c_str());
