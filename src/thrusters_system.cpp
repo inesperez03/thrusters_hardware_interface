@@ -590,8 +590,7 @@ hardware_interface::return_type ThrustersSystem::write(
 
     if (changed) {
       std::ostringstream stream;
-      stream << "[SIM]";
-      stream << "\n";
+      stream << "[SIM]\n";
       for (std::size_t index = 0; index < info_.joints.size(); ++index) {
         stream
           << " " << info_.joints[index].name
