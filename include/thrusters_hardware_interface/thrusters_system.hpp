@@ -68,6 +68,9 @@ private:
   std::vector<double> last_force_commands_;
   std::vector<double> last_outputs_;
 
+  // Per-joint flag: if true, mirror PWM around 1500 us in real hardware mode.
+  std::vector<bool> inverted_flags_;
+
   ThrusterMapper mapper_;
 
   rclcpp::Node::SharedPtr internal_node_;

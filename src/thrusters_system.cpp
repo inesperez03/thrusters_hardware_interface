@@ -48,6 +48,19 @@ std::vector<int> parse_pwm_channels(const std::string & channels)
   return parsed_channels;
 }
 
+bool parse_bool_parameter(const std::string & value)
+{
+  if (value == "true" || value == "True" || value == "TRUE" || value == "1") {
+    return true;
+  }
+
+  if (value == "false" || value == "False" || value == "FALSE" || value == "0") {
+    return false;
+  }
+
+  throw std::invalid_argument("Invalid boolean value: " + value);
+}
+
 }  // namespace
 
 void ThrustersSystem::publish_zero_command()
@@ -129,6 +142,31 @@ hardware_interface::CallbackReturn ThrustersSystem::on_init(
     info_.joints.size(), std::numeric_limits<double>::quiet_NaN());
   last_outputs_.assign(
     info_.joints.size(), std::numeric_limits<double>::quiet_NaN());
+  inverted_flags_.assign(info_.joints.size(), false);
+
+  for (std::size_t index = 0; index < info_.joints.size(); ++index) {
+    const auto & joint = info_.joints[index];
+    const auto inverted_it = joint.parameters.find("inverted");
+
+    if (inverted_it != joint.parameters.end()) {
+      try {
+        inverted_flags_[index] = parse_bool_parameter(inverted_it->second);
+      } catch (const std::exception & e) {
+        RCLCPP_ERROR(
+          kLogger,
+          "Invalid 'inverted' parameter for joint %s: %s",
+          joint.name.c_str(),
+          e.what());
+        return hardware_interface::CallbackReturn::ERROR;
+      }
+    }
+
+    RCLCPP_INFO(
+      kLogger,
+      "Joint %s inverted=%s",
+      joint.name.c_str(),
+      inverted_flags_[index] ? "true" : "false");
+  }
 
   is_active_ = false;
   navigator_initialized_ = false;
@@ -463,7 +501,12 @@ hardware_interface::return_type ThrustersSystem::write(
     stonefish_outputs[index] = mapper_.forceToStonefish(force_commands_[index]);
 
 #ifdef TARGET_RASPBERRY
-    const double pulse_us = mapper_.forceToPwm(force_commands_[index]);
+    double pulse_us = mapper_.forceToPwm(force_commands_[index]);
+
+    if (environment_ == "real" && inverted_flags_[index]) {
+      pulse_us = 3000.0 - pulse_us;
+    }
+
     pwm_counts[index] = pulse_us_to_counts(pulse_us, pwm_frequency_hz_);
 #endif
   }
