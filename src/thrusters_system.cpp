@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
-#include <sstream>
 #include <stdexcept>
 
 #include "pluginlib/class_list_macros.hpp"
@@ -557,24 +556,6 @@ hardware_interface::return_type ThrustersSystem::write(
     }
 
     if (changed) {
-      std::ostringstream stream;
-      stream << "[REAL]";
-      for (std::size_t index = 0; index < info_.joints.size(); ++index) {
-        double commanded_force = force_commands_[index];
-        double applied_force = commanded_force;
-
-        if (inverted_flags_[index]) {
-          applied_force = commanded_force;
-        }
-
-        stream
-          << " " << info_.joints[index].name
-          << " cmd=" << commanded_force
-          << " applied=" << applied_force
-          << "N->" << pwm_counts[index];
-      }
-      RCLCPP_INFO(kLogger, "%s", stream.str().c_str());
-
       last_force_commands_ = force_commands_;
       for (std::size_t index = 0; index < info_.joints.size(); ++index) {
         last_outputs_[index] = static_cast<double>(pwm_counts[index]);
