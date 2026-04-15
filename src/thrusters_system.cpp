@@ -161,6 +161,11 @@ hardware_interface::CallbackReturn ThrustersSystem::on_init(
       }
     }
 
+    RCLCPP_INFO(
+      kLogger,
+      "Joint %s inverted=%s",
+      joint.name.c_str(),
+      inverted_flags_[index] ? "true" : "false");
   }
 
   is_active_ = false;
@@ -215,6 +220,9 @@ hardware_interface::CallbackReturn ThrustersSystem::on_configure(
       internal_node_->create_publisher<std_msgs::msg::Float64MultiArray>(
         stonefish_topic_, 10);
 
+    RCLCPP_INFO(
+      kLogger, "Stonefish publisher created successfully for topic %s",
+      stonefish_topic_.c_str());
   } else if (environment_ == "real") {
 #ifdef TARGET_RASPBERRY
     if (pwm_channel_indices_.empty()) {
@@ -240,6 +248,8 @@ hardware_interface::CallbackReturn ThrustersSystem::on_configure(
         set_pwm_channel_value(static_cast<uintptr_t>(channel_index), neutral_counts);
       }
 
+      RCLCPP_INFO(kLogger, "Navigator initialized successfully");
+      RCLCPP_INFO(kLogger, "PWM enabled at %.2f Hz", pwm_frequency_hz_);
     } catch (const std::exception & e) {
       RCLCPP_ERROR(kLogger, "Failed to initialize Navigator: %s", e.what());
       navigator_initialized_ = false;
@@ -272,6 +282,11 @@ hardware_interface::CallbackReturn ThrustersSystem::on_configure(
     last_outputs_.begin(),
     last_outputs_.end(),
     std::numeric_limits<double>::quiet_NaN());
+
+  RCLCPP_INFO(kLogger, "ThrustersSystem configured successfully");
+  RCLCPP_INFO(kLogger, "Environment: %s", environment_.c_str());
+  RCLCPP_INFO(kLogger, "Thruster joints: %zu", info_.joints.size());
+  RCLCPP_INFO(kLogger, "Loaded CSV samples: %zu", mapper_.size());
 
   return hardware_interface::CallbackReturn::SUCCESS;
 }
@@ -313,6 +328,7 @@ hardware_interface::CallbackReturn ThrustersSystem::on_cleanup(
     last_outputs_.end(),
     std::numeric_limits<double>::quiet_NaN());
 
+  RCLCPP_INFO(kLogger, "ThrustersSystem cleaned up");
   return hardware_interface::CallbackReturn::SUCCESS;
 }
 
@@ -344,6 +360,7 @@ hardware_interface::CallbackReturn ThrustersSystem::on_shutdown(
   internal_node_.reset();
   thruster_stonefish_pub_.reset();
 
+  RCLCPP_INFO(kLogger, "ThrustersSystem shutdown completed");
   return hardware_interface::CallbackReturn::SUCCESS;
 }
 
@@ -365,6 +382,7 @@ hardware_interface::CallbackReturn ThrustersSystem::on_activate(
 
   publish_zero_command();
 
+  RCLCPP_INFO(kLogger, "ThrustersSystem activated");
   return hardware_interface::CallbackReturn::SUCCESS;
 }
 
@@ -391,6 +409,7 @@ hardware_interface::CallbackReturn ThrustersSystem::on_deactivate(
   }
 #endif
 
+  RCLCPP_INFO(kLogger, "ThrustersSystem deactivated");
   return hardware_interface::CallbackReturn::SUCCESS;
 }
 
@@ -525,9 +544,41 @@ hardware_interface::return_type ThrustersSystem::write(
       return hardware_interface::return_type::ERROR;
     }
 
-    last_force_commands_ = force_commands_;
+    bool changed = false;
     for (std::size_t index = 0; index < info_.joints.size(); ++index) {
-      last_outputs_[index] = static_cast<double>(pwm_counts[index]);
+      if (
+        std::isnan(last_force_commands_[index]) ||
+        std::fabs(force_commands_[index] - last_force_commands_[index]) > 1e-6 ||
+        std::fabs(static_cast<double>(pwm_counts[index]) - last_outputs_[index]) > 1e-6)
+      {
+        changed = true;
+        break;
+      }
+    }
+
+    if (changed) {
+      std::ostringstream stream;
+      stream << "[REAL]";
+      for (std::size_t index = 0; index < info_.joints.size(); ++index) {
+        double commanded_force = force_commands_[index];
+        double applied_force = commanded_force;
+
+        if (inverted_flags_[index]) {
+          applied_force = commanded_force;
+        }
+
+        stream
+          << " " << info_.joints[index].name
+          << " cmd=" << commanded_force
+          << " applied=" << applied_force
+          << "N->" << pwm_counts[index];
+      }
+      RCLCPP_INFO(kLogger, "%s", stream.str().c_str());
+
+      last_force_commands_ = force_commands_;
+      for (std::size_t index = 0; index < info_.joints.size(); ++index) {
+        last_outputs_[index] = static_cast<double>(pwm_counts[index]);
+      }
     }
 #endif
   } else if (environment_ == "sim") {
@@ -540,8 +591,33 @@ hardware_interface::return_type ThrustersSystem::write(
     msg.data = stonefish_outputs;
     thruster_stonefish_pub_->publish(msg);
 
-    last_force_commands_ = force_commands_;
-    last_outputs_ = stonefish_outputs;
+    bool changed = false;
+    for (std::size_t index = 0; index < info_.joints.size(); ++index) {
+      if (
+        std::isnan(last_force_commands_[index]) ||
+        std::fabs(force_commands_[index] - last_force_commands_[index]) > 1e-6 ||
+        std::fabs(stonefish_outputs[index] - last_outputs_[index]) > 1e-6)
+      {
+        changed = true;
+        break;
+      }
+    }
+
+    if (changed) {
+      std::ostringstream stream;
+      stream << "[SIM]\n";
+      for (std::size_t index = 0; index < info_.joints.size(); ++index) {
+        stream
+          << " " << info_.joints[index].name
+          << "=" << force_commands_[index]
+          << "N->" << stonefish_outputs[index]
+          << "\n";
+      }
+      RCLCPP_INFO(kLogger, "%s", stream.str().c_str());
+
+      last_force_commands_ = force_commands_;
+      last_outputs_ = stonefish_outputs;
+    }
   } else {
     RCLCPP_ERROR(kLogger, "Unknown environment: %s", environment_.c_str());
     return hardware_interface::return_type::ERROR;
