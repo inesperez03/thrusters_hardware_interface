@@ -604,17 +604,6 @@ hardware_interface::return_type ThrustersSystem::write(
     }
 
     if (changed) {
-      std::ostringstream stream;
-      stream << "[SIM]\n";
-      for (std::size_t index = 0; index < info_.joints.size(); ++index) {
-        stream
-          << " " << info_.joints[index].name
-          << "=" << force_commands_[index]
-          << "N->" << stonefish_outputs[index]
-          << "\n";
-      }
-      RCLCPP_INFO(kLogger, "%s", stream.str().c_str());
-
       last_force_commands_ = force_commands_;
       last_outputs_ = stonefish_outputs;
     }
