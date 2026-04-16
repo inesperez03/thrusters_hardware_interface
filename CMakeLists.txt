@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(thrusters_hardware_interface)
+project(sura_hardware_interface)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -25,7 +25,7 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
   set(NAVIGATOR_ARCH "aarch64-unknown-linux-gnu")
   set(TARGET_RASPBERRY TRUE)
 else()
-  message(WARNING "Building thrusters_hardware_interface in desktop mode on unsupported architecture: ${CMAKE_SYSTEM_PROCESSOR}")
+  message(WARNING "Building sura_hardware_interface in desktop mode on unsupported architecture: ${CMAKE_SYSTEM_PROCESSOR}")
   set(TARGET_RASPBERRY FALSE)
 endif()
 
@@ -82,7 +82,7 @@ ament_target_dependencies(${PROJECT_NAME}
 
 pluginlib_export_plugin_description_file(
   hardware_interface
-  thrusters_hardware_plugins.xml
+  sura_hardware_plugins.xml
 )
 
 install(
@@ -101,7 +101,7 @@ install(
 )
 
 install(
-  FILES thrusters_hardware_plugins.xml
+  FILES sura_hardware_plugins.xml
   DESTINATION share/${PROJECT_NAME}
 )
 

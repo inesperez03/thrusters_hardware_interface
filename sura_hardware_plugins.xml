@@ -1,7 +1,7 @@
-<library path="thrusters_hardware_interface">
+<library path="sura_hardware_interface">
   <class
-    name="thrusters_hardware_interface/ThrustersSystem"
-    type="thrusters_hardware_interface::ThrustersSystem"
+    name="sura_hardware_interface/ThrustersSystem"
+    type="sura_hardware_interface::ThrustersSystem"
     base_class_type="hardware_interface::SystemInterface">
     <description>
       Hardware interface for thrusters

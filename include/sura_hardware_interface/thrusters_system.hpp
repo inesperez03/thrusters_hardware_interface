@@ -12,9 +12,9 @@
 #include "rclcpp_lifecycle/state.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
 
-#include "thrusters_hardware_interface/thruster_mapper.hpp"
+#include "sura_hardware_interface/thruster_mapper.hpp"
 
-namespace thrusters_hardware_interface
+namespace sura_hardware_interface
 {
 
 class ThrustersSystem : public hardware_interface::SystemInterface
@@ -83,4 +83,4 @@ private:
   std::vector<int> pwm_channel_indices_;
 };
 
-}  // namespace thrusters_hardware_interface
+}  // namespace sura_hardware_interface

@@ -1,11 +1,11 @@
-#include "thrusters_hardware_interface/thruster_mapper.hpp"
+#include "sura_hardware_interface/thruster_mapper.hpp"
 
 #include <algorithm>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
 
-namespace thrusters_hardware_interface
+namespace sura_hardware_interface
 {
 
 bool ThrusterMapper::loadCsv(const std::string & file_path)

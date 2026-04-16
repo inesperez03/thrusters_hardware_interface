@@ -1,4 +1,4 @@
-#include "thrusters_hardware_interface/thrusters_system.hpp"
+#include "sura_hardware_interface/thrusters_system.hpp"
 
 #ifdef TARGET_RASPBERRY
 #include "bindings.h"
@@ -11,13 +11,13 @@
 
 #include "pluginlib/class_list_macros.hpp"
 
-namespace thrusters_hardware_interface
+namespace sura_hardware_interface
 {
 
 namespace
 {
 
-const rclcpp::Logger kLogger = rclcpp::get_logger("thrusters_hardware_interface");
+const rclcpp::Logger kLogger = rclcpp::get_logger("sura_hardware_interface");
 
 #ifdef TARGET_RASPBERRY
 static uint16_t pulse_us_to_counts(double pulse_us, double freq_hz)
@@ -213,7 +213,7 @@ hardware_interface::CallbackReturn ThrustersSystem::on_configure(
   pwm_enabled_ = false;
 
   if (environment_ == "sim") {
-    internal_node_ = std::make_shared<rclcpp::Node>("thrusters_hardware_interface_pub");
+    internal_node_ = std::make_shared<rclcpp::Node>("sura_hardware_interface_pub");
 
     thruster_stonefish_pub_ =
       internal_node_->create_publisher<std_msgs::msg::Float64MultiArray>(
@@ -596,8 +596,8 @@ hardware_interface::return_type ThrustersSystem::write(
   return hardware_interface::return_type::OK;
 }
 
-}  // namespace thrusters_hardware_interface
+}  // namespace sura_hardware_interface
 
 PLUGINLIB_EXPORT_CLASS(
-  thrusters_hardware_interface::ThrustersSystem,
+  sura_hardware_interface::ThrustersSystem,
   hardware_interface::SystemInterface)

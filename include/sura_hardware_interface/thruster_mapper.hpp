@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-namespace thrusters_hardware_interface
+namespace sura_hardware_interface
 {
 
 struct ThrusterSample
