@@ -1,4 +1,4 @@
-#include "sura_hardware_interface/thrusters_system.hpp"
+#include "sura_hardware_interface/thrusters/thrusters_system.hpp"
 
 #ifdef TARGET_RASPBERRY
 #include "bindings.h"

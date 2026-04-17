@@ -12,7 +12,7 @@
 #include "rclcpp_lifecycle/state.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
 
-#include "sura_hardware_interface/thruster_mapper.hpp"
+#include "sura_hardware_interface/thrusters/thruster_mapper.hpp"
 
 namespace sura_hardware_interface
 {

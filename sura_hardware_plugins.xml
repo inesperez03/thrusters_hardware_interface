@@ -7,4 +7,13 @@
       Hardware interface for thrusters
     </description>
   </class>
+
+  <class
+    name="sura_hardware_interface/SensorsSystem"
+    type="sura_hardware_interface::SensorsSystem"
+    base_class_type="hardware_interface::SystemInterface">
+    <description>
+      Hardware interface for sensors
+    </description>
+  </class>
 </library>

@@ -1,4 +1,4 @@
-#include "sura_hardware_interface/thruster_mapper.hpp"
+#include "sura_hardware_interface/thrusters/thruster_mapper.hpp"
 
 #include <algorithm>
 #include <fstream>
