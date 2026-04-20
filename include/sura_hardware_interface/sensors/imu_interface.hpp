@@ -11,6 +11,7 @@ public:
   bool initialize(const hardware_interface::HardwareInfo & info);
   bool activate();
   bool deactivate();
+  bool cleanup();
 
   bool read(
     double & orientation_x,

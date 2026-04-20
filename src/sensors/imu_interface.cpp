@@ -7,8 +7,13 @@ namespace sura_hardware_interface
 
 bool ImuInterface::initialize(const hardware_interface::HardwareInfo &)
 {
+  if (initialized_) {
+    return true;
+  }
+
   init();
   initialized_ = true;
+  active_ = false;
   return true;
 }
 
@@ -28,6 +33,13 @@ bool ImuInterface::deactivate()
   return true;
 }
 
+bool ImuInterface::cleanup()
+{
+  active_ = false;
+  initialized_ = false;
+  return true;
+}
+
 bool ImuInterface::read(
   double & orientation_x,
   double & orientation_y,
@@ -44,8 +56,8 @@ bool ImuInterface::read(
     return false;
   }
 
-  AxisData accel = read_accel();
-  AxisData gyro = read_gyro();
+  const AxisData accel = read_accel();
+  const AxisData gyro = read_gyro();
 
   // Placeholder: la orientación real la calculará el filtro después
   orientation_x = 0.0;

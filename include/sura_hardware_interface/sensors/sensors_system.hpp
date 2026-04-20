@@ -10,6 +10,7 @@
 #include <rclcpp_lifecycle/state.hpp>
 
 #include "sura_hardware_interface/sensors/imu_interface.hpp"
+#include "sura_hardware_interface/sensors/magnetometer_interface.hpp"
 
 namespace sura_hardware_interface
 {
@@ -22,9 +23,6 @@ public:
   hardware_interface::CallbackReturn on_init(
     const hardware_interface::HardwareInfo & info) override;
 
-  std::vector<hardware_interface::StateInterface> export_state_interfaces() override;
-  std::vector<hardware_interface::CommandInterface> export_command_interfaces() override;
-
   hardware_interface::CallbackReturn on_configure(
     const rclcpp_lifecycle::State & previous_state) override;
 
@@ -33,6 +31,18 @@ public:
 
   hardware_interface::CallbackReturn on_deactivate(
     const rclcpp_lifecycle::State & previous_state) override;
+
+  hardware_interface::CallbackReturn on_cleanup(
+    const rclcpp_lifecycle::State & previous_state) override;
+
+  hardware_interface::CallbackReturn on_shutdown(
+    const rclcpp_lifecycle::State & previous_state) override;
+
+  hardware_interface::CallbackReturn on_error(
+    const rclcpp_lifecycle::State & previous_state) override;
+
+  std::vector<hardware_interface::StateInterface> export_state_interfaces() override;
+  std::vector<hardware_interface::CommandInterface> export_command_interfaces() override;
 
   hardware_interface::return_type read(
     const rclcpp::Time & time,
@@ -43,10 +53,19 @@ public:
     const rclcpp::Duration & period) override;
 
 private:
+  void reset_sensor_state();
+
   hardware_interface::HardwareInfo info_;
+
   ImuInterface imu_;
+  MagnetometerInterface magnetometer_;
+
   bool has_imu_{false};
+  bool has_magnetometer_{false};
+  bool is_active_{false};
+
   std::string imu_sensor_name_{"imu_sensor"};
+  std::string magnetometer_sensor_name_{"magnetometer_sensor"};
 
   double orientation_x_{0.0};
   double orientation_y_{0.0};
@@ -60,6 +79,10 @@ private:
   double linear_acceleration_x_{0.0};
   double linear_acceleration_y_{0.0};
   double linear_acceleration_z_{0.0};
+
+  double magnetic_field_x_{0.0};
+  double magnetic_field_y_{0.0};
+  double magnetic_field_z_{0.0};
 };
 
 }  // namespace sura_hardware_interface
