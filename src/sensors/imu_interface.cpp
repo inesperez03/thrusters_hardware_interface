@@ -1,6 +1,8 @@
 #include "sura_hardware_interface/sensors/imu_interface.hpp"
 
+#ifdef TARGET_RASPBERRY
 #include "bindings.h"
+#endif
 
 namespace sura_hardware_interface
 {
@@ -11,7 +13,9 @@ bool ImuInterface::initialize(const hardware_interface::HardwareInfo &)
     return true;
   }
 
+#ifdef TARGET_RASPBERRY
   init();
+#endif
   initialized_ = true;
   active_ = false;
   return true;
@@ -56,8 +60,11 @@ bool ImuInterface::read(
     return false;
   }
 
+#ifdef TARGET_RASPBERRY
   const AxisData accel = read_accel();
   const AxisData gyro = read_gyro();
+#else
+#endif
 
   // Placeholder: la orientación real la calculará el filtro después
   orientation_x = 0.0;
@@ -65,6 +72,7 @@ bool ImuInterface::read(
   orientation_z = 0.0;
   orientation_w = 1.0;
 
+#ifdef TARGET_RASPBERRY
   angular_velocity_x = static_cast<double>(gyro.x);
   angular_velocity_y = static_cast<double>(gyro.y);
   angular_velocity_z = static_cast<double>(gyro.z);
@@ -72,6 +80,15 @@ bool ImuInterface::read(
   linear_acceleration_x = static_cast<double>(accel.x);
   linear_acceleration_y = static_cast<double>(accel.y);
   linear_acceleration_z = static_cast<double>(accel.z);
+#else
+  angular_velocity_x = 0.0;
+  angular_velocity_y = 0.0;
+  angular_velocity_z = 0.0;
+
+  linear_acceleration_x = 0.0;
+  linear_acceleration_y = 0.0;
+  linear_acceleration_z = 0.0;
+#endif
 
   return true;
 }
