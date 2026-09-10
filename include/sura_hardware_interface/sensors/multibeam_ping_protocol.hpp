@@ -89,9 +89,7 @@ struct AtofPoint
 {
   float angle_rad{0.0F};
   float time_of_flight_s{0.0F};
-  float power{0.0F};
-  uint8_t point_type{0};
-  std::array<uint8_t, 3> reserved{};
+  std::array<uint32_t, 2> reserved{};
 };
 
 struct AtofPointData

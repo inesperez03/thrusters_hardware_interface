@@ -70,7 +70,7 @@ int main(int argc, char ** argv)
   params.enable_atof_data = true;
   params.enable_channel_data = false;
   params.reserved_for_raw_data = false;
-  params.enable_yz_point_data = true;
+  params.enable_yz_point_data = false;
 
   bool configured = false;
   int received_pings = 0;

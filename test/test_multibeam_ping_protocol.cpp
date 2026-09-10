@@ -115,11 +115,8 @@ TEST(MultibeamPingProtocol, DecodesAtofPointData)
   append_le<uint16_t>(payload, 0U);
   append_float(payload, 0.5F);
   append_float(payload, 0.01F);
-  append_float(payload, 12.0F);
-  payload.push_back(2U);
-  payload.push_back(3U);
-  payload.push_back(4U);
-  payload.push_back(5U);
+  append_le<uint32_t>(payload, 0x11223344U);
+  append_le<uint32_t>(payload, 0x55667788U);
 
   AtofPointData data;
   ASSERT_TRUE(sura_hardware_interface::multibeam::decode_atof_point_data(payload, data));
@@ -129,8 +126,8 @@ TEST(MultibeamPingProtocol, DecodesAtofPointData)
   ASSERT_EQ(data.points.size(), 1U);
   EXPECT_FLOAT_EQ(data.points[0].angle_rad, 0.5F);
   EXPECT_FLOAT_EQ(data.points[0].time_of_flight_s, 0.01F);
-  EXPECT_FLOAT_EQ(data.points[0].power, 12.0F);
-  EXPECT_EQ(data.points[0].point_type, 2U);
+  EXPECT_EQ(data.points[0].reserved[0], 0x11223344U);
+  EXPECT_EQ(data.points[0].reserved[1], 0x55667788U);
 }
 
 TEST(MultibeamPingProtocol, DecodesYzPointData)

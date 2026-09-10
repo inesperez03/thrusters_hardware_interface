@@ -5,6 +5,7 @@
 #include <cmath>
 #include <exception>
 #include <limits>
+#include <stdexcept>
 #include <string>
 
 #include "pluginlib/class_list_macros.hpp"
@@ -41,6 +42,26 @@ double get_double_param_or(
 {
   const auto value = get_param_or(sensor_info, name, std::to_string(default_value));
   return std::stod(value);
+}
+
+bool get_bool_param_or(
+  const hardware_interface::ComponentInfo & sensor_info,
+  const std::string & name,
+  const bool default_value)
+{
+  const auto value = get_param_or(sensor_info, name, default_value ? "true" : "false");
+  if (value == "true" || value == "1" || value == "True" || value == "TRUE") {
+    return true;
+  }
+  if (value == "false" || value == "0" || value == "False" || value == "FALSE") {
+    return false;
+  }
+  throw std::invalid_argument("invalid boolean value for '" + name + "': " + value);
+}
+
+const char * bool_name(const bool value)
+{
+  return value ? "true" : "false";
 }
 
 uint32_t hi32(const uint64_t value)
@@ -96,6 +117,16 @@ bool MultibeamInterface::initialize(
     max_tx_queue_bytes_ = static_cast<std::size_t>(
       std::max(1024, get_int_param_or(sensor_info, "max_tx_queue_bytes", 65536)));
     silence_timeout_s_ = get_double_param_or(sensor_info, "silence_timeout_s", silence_timeout_s_);
+    ping_parameters_.enable_atof_data =
+      get_bool_param_or(sensor_info, "enable_atof_data", ping_parameters_.enable_atof_data);
+    ping_parameters_.enable_channel_data =
+      get_bool_param_or(sensor_info, "enable_channel_data", ping_parameters_.enable_channel_data);
+    ping_parameters_.reserved_for_raw_data =
+      get_bool_param_or(sensor_info, "reserved_for_raw_data", ping_parameters_.reserved_for_raw_data);
+    ping_parameters_.enable_yz_point_data =
+      get_bool_param_or(sensor_info, "enable_yz_point_data", ping_parameters_.enable_yz_point_data);
+    ping_parameters_.ping_enable =
+      get_bool_param_or(sensor_info, "ping_enable", true);
   } catch (const std::exception & e) {
     RCLCPP_ERROR(
       kLogger,
@@ -104,12 +135,6 @@ bool MultibeamInterface::initialize(
       e.what());
     return false;
   }
-
-  ping_parameters_.enable_atof_data = true;
-  ping_parameters_.enable_channel_data = false;
-  ping_parameters_.reserved_for_raw_data = false;
-  ping_parameters_.enable_yz_point_data = true;
-  ping_parameters_.ping_enable = true;
 
   tcp_.configure(
     ip_address_,
@@ -192,6 +217,26 @@ bool MultibeamInterface::read(std::unordered_map<std::string, double> & states)
 void MultibeamInterface::send_initial_configuration()
 {
   initialization_sent_ = true;
+  RCLCPP_INFO(
+    kLogger,
+    "Configuring multibeam '%s' at %s:%d: start_mm=%d end_mm=%d sound_speed=%.1f "
+    "gain_index=%d msec_per_ping=%d range_steps=%u pulse_len_steps=%.2f target_ping_hz=%d "
+    "enable_atof=%s enable_yz=%s enable_channel=%s ping_enable=%s",
+    sensor_name_.c_str(),
+    ip_address_.c_str(),
+    port_,
+    ping_parameters_.start_mm,
+    ping_parameters_.end_mm,
+    static_cast<double>(ping_parameters_.sound_speed_m_s),
+    static_cast<int>(ping_parameters_.gain_index),
+    static_cast<int>(ping_parameters_.msec_per_ping),
+    static_cast<unsigned int>(ping_parameters_.n_range_steps),
+    static_cast<double>(ping_parameters_.pulse_len_steps),
+    ping_parameters_.target_ping_hz,
+    bool_name(ping_parameters_.enable_atof_data),
+    bool_name(ping_parameters_.enable_yz_point_data),
+    bool_name(ping_parameters_.enable_channel_data),
+    bool_name(ping_parameters_.ping_enable));
   (void)tcp_.enqueue(multibeam::encode_general_request(multibeam::kMsgProtocolVersion));
   (void)tcp_.enqueue(multibeam::encode_general_request(multibeam::kMsgDeviceInformation));
   (void)tcp_.enqueue(multibeam::encode_set_ping_parameters(ping_parameters_));
@@ -282,12 +327,9 @@ void MultibeamInterface::handle_atof_point_data(const multibeam::AtofPointData &
   for (std::size_t i = 0; i < stored_detection_count_; ++i) {
     detections_[i].angle_rad = data.points[i].angle_rad;
     detections_[i].time_of_flight_s = data.points[i].time_of_flight_s;
-    detections_[i].power = data.points[i].power;
-    detections_[i].point_type = data.points[i].point_type;
-    detections_[i].reserved =
-      static_cast<double>(data.points[i].reserved[0]) +
-      static_cast<double>(data.points[i].reserved[1] << 8U) +
-      static_cast<double>(data.points[i].reserved[2] << 16U);
+    detections_[i].power = std::numeric_limits<double>::quiet_NaN();
+    detections_[i].point_type = 0.0;
+    detections_[i].reserved = 0.0;
   }
 
   if (truncated_) {

@@ -346,17 +346,11 @@ bool decode_atof_point_data(const std::vector<uint8_t> & payload, AtofPointData 
     AtofPoint point;
     if (!read_float(payload, offset, point.angle_rad) ||
         !read_float(payload, offset, point.time_of_flight_s) ||
-        !read_float(payload, offset, point.power))
+        !read_u32(payload, offset, point.reserved[0]) ||
+        !read_u32(payload, offset, point.reserved[1]))
     {
       return false;
     }
-    if (!has_bytes(payload, offset, 4U)) {
-      return false;
-    }
-    point.point_type = payload[offset++];
-    point.reserved[0] = payload[offset++];
-    point.reserved[1] = payload[offset++];
-    point.reserved[2] = payload[offset++];
     data.points.push_back(point);
   }
 
